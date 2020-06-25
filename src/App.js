@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, useEffect} from "react";
+
+import api from './services/api';
 
 import {
   SafeAreaView,
@@ -11,45 +13,91 @@ import {
 } from "react-native";
 
 export default function App() {
+  const [repositories, setRepositories] = useState([]);
+
+  useEffect(() => {
+    api.get('/repositories').then(response => {
+      setRepositories(response.data);
+    }).catch(error => {
+      console.log('Nao foi possivel carregar os repositorios');
+    });
+  }, []);
+
   async function handleLikeRepository(id) {
-    // Implement "Like Repository" functionality
+    try {
+      const response = await api.post(`/repositories/${id}/like`);
+
+      var newRepositories = [...repositories];
+      const indexRepository = newRepositories.findIndex(repository => repository.id == id);
+
+      newRepositories[indexRepository].likes = response.data.likes;
+      setRepositories(newRepositories); 
+
+    } catch(err) {
+      console.log(`Nao foi possivel criar like para repositorio, id = ${id}`);
+      return;
+    }
   }
 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#7159c1" />
       <SafeAreaView style={styles.container}>
-        <View style={styles.repositoryContainer}>
-          <Text style={styles.repository}>Repository 1</Text>
+        <FlatList 
+          data={repositories}
+          keyExtractor={repository => repository.id}
+          renderItem={({ item: repository }) => (
+            <View style={styles.repositoryContainer}>
+            <Text style={styles.repository}>{repository.title}</Text>
 
-          <View style={styles.techsContainer}>
-            <Text style={styles.tech}>
-              ReactJS
-            </Text>
-            <Text style={styles.tech}>
-              Node.js
-            </Text>
-          </View>
+            <View style={styles.techsContainer}>
+              {repository.techs.map(item => {
+                let techName;
+                
+                switch(item) {
+                  case 1:
+                    techName = 'Nodejs';
+                    break;
+                  case 2:
+                    techName = 'Reactjs';
+                    break;
+                  case 3:
+                    techName = 'ReactNative';
+                    break;
+                  case 4:
+                    techName = 'C++';
+                    break;
+                }
 
-          <View style={styles.likesContainer}>
-            <Text
-              style={styles.likeText}
-              // Remember to replace "1" below with repository ID: {`repository-likes-${repository.id}`}
-              testID={`repository-likes-1`}
+                return (
+                  <Text style={styles.tech}>
+                    {techName}
+                  </Text>
+                );
+              })}
+              
+            </View>
+
+            <View style={styles.likesContainer}>
+              <Text
+                style={styles.likeText}
+                testID={`repository-likes-${repository.id}`}
+              >
+                {repository.likes} curtidas
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleLikeRepository(repository.id)}
+              testID={`like-button-${repository.id}`}
             >
-              3 curtidas
-            </Text>
+              <Text style={styles.buttonText}>Curtir</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => handleLikeRepository(1)}
-            // Remember to replace "1" below with repository ID: {`like-button-${repository.id}`}
-            testID={`like-button-1`}
-          >
-            <Text style={styles.buttonText}>Curtir</Text>
-          </TouchableOpacity>
-        </View>
+        
+          )}
+        />
       </SafeAreaView>
     </>
   );
@@ -67,7 +115,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   repository: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "bold",
   },
   techsContainer: {
